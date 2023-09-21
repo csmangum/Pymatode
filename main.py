@@ -14,9 +14,9 @@ DIRECTION_MAPPING = {
 }
 
 
-def initialize_grids(grid_size_x: int, grid_size_y: int) -> tuple:
+def initialize_grid(grid_size_x: int, grid_size_y: int) -> np.ndarray:
     """
-    Initialize nutrient and repellent grids with radial gradients.
+    Initialize a grid of size (grid_size_x, grid_size_y).
 
     Parameters
     ----------
@@ -27,22 +27,12 @@ def initialize_grids(grid_size_x: int, grid_size_y: int) -> tuple:
 
     Returns
     -------
-    tuple
-        Tuple containing the nutrient grid and repellent grid.
-        Each grid is a 2D numpy array.
+    grid : np.ndarray
+        The initialized grid
     """
-    nutrient_grid = np.zeros((grid_size_x, grid_size_y))
-    repellent_grid = np.zeros((grid_size_x, grid_size_y))
-    center_x, center_y = grid_size_x // 2, grid_size_y // 2
+    grid = np.zeros((grid_size_x, grid_size_y))
 
-    # Populate grids with radial gradients
-    for x in range(grid_size_x):
-        for y in range(grid_size_y):
-            distance_to_center = np.sqrt((x - center_x)**2 + (y - center_y)**2)
-            nutrient_grid[x, y] = np.exp(-distance_to_center / 20.0)
-            repellent_grid[x, y] = 1 - np.exp(-distance_to_center / 20.0)
-
-    return nutrient_grid, repellent_grid
+    return grid
 
 
 def initialize_nematode(grid_size_x: int, grid_size_y: int) -> list:
@@ -69,6 +59,29 @@ def initialize_nematode(grid_size_x: int, grid_size_y: int) -> list:
     return [(x, y)]
 
 
+def initialize_danger(grid_size_x: int, grid_size_y: int, n: int = 3) -> list:
+    """
+    Initialize the starting position of nematode.
+
+    Parameters
+    ----------
+    grid_size_x : int
+        The horizontal size of the grid.
+    grid_size_y : int
+        The vertical size of the grid.
+    n : int, optional
+        The number of danger positions. The default is 3.
+    """
+    # Create list of n random x, y positions
+    danger_positions = []
+    for i in range(n):
+        x = random.randint(0, grid_size_x - 1)
+        y = random.randint(0, grid_size_y - 1)
+        danger_positions.append((x, y))
+
+    return danger_positions
+
+
 def get_level(x: int, y: int, grid: np.ndarray) -> float:
     """
     Get the nutrient or repellent level at a specific position in a grid.
@@ -93,7 +106,10 @@ def get_level(x: int, y: int, grid: np.ndarray) -> float:
         return 0
 
 
-def visualize_state(grid: np.ndarray, nematode, time_step: int) -> None:
+def visualize_state(grid: np.ndarray,
+                    nematode,
+                    danger_positions: list,
+                    time_step: int) -> None:
     """
     Visualize the current state of the simulation.
 
@@ -106,13 +122,16 @@ def visualize_state(grid: np.ndarray, nematode, time_step: int) -> None:
     time_step : int
         The current time step.
     """
-    
+
     nematode_x, nematode_y = nematode.position
     orientation = DIRECTION_MAPPING[nematode.orientation]
-    
-    plt.imshow(grid, cmap='viridis')
-    plt.scatter(nematode_y, nematode_x, c='red', label='Nematode', marker=orientation)
-    plt.colorbar(label='Nutrient Concentration')
+
+    plt.imshow(grid, cmap='Greens')
+    plt.scatter(nematode_y, nematode_x, c='red',
+                label='Nematode', marker=orientation)
+    plt.scatter([y for x, y in danger_positions], [x for x, y in danger_positions],
+                c='black', label='Danger', marker='x')
+
     plt.title(f'Time step {time_step}')
 
     # Remove tick labels
@@ -159,10 +178,10 @@ class Nematode:
         self.position = (new_x, new_y)
 
         self.previous_concentration = get_level(
-            new_x, new_y, simulation.nutrient_grid)
+            new_x, new_y, simulation.grid)
 
         return new_x, new_y
-    
+
     @property
     def in_front(self):
         if self.orientation == 'up':
@@ -173,11 +192,11 @@ class Nematode:
             return (self.x-1, self.y)
         elif self.orientation == 'right':
             return (self.x+1, self.y)
-        
+
     @property
     def collision(self):
         return self.in_front in [nematode.position for nematode in simulation.nematode]
-        
+
     @property
     def nearby(self):
         return [(self.x-1, self.y), (self.x+1, self.y),
@@ -205,7 +224,10 @@ class Simulation:
         self.nematode_positions = initialize_nematode(
             self.grid_size_x, self.grid_size_y)
 
-        self.nutrient_grid, self.repellent_grid = initialize_grids(
+        self.grid = initialize_grid(
+            self.grid_size_x, self.grid_size_y)
+
+        self.danger_positions = initialize_danger(
             self.grid_size_x, self.grid_size_y)
 
         self._setup()
@@ -227,7 +249,7 @@ class Simulation:
         # Visualize the simulation state every 10 time steps
         if t % 1 == 0:
             image = visualize_state(
-                self.nutrient_grid, nematode, t)
+                self.grid, nematode, self.danger_positions, t)
 
             self.image_list.append(image)
 
@@ -263,7 +285,7 @@ if __name__ == '__main__':
     # command line update defaults
     parser = argparse.ArgumentParser(description='Nematode simulation')
     parser.add_argument('--time_steps', type=int,
-                        default=100, help='number of time steps')
+                        default=50, help='number of time steps')
     parser.add_argument('--grid_size_x', type=int,
                         default=25, help='grid size x')
     parser.add_argument('--grid_size_y', type=int,
