@@ -130,7 +130,7 @@ def visualize_state(grid: np.ndarray,
     plt.scatter(nematode_y, nematode_x, c='red',
                 label='Nematode', marker=orientation)
     plt.scatter([y for x, y in danger_positions], [x for x, y in danger_positions],
-                c='black', label='Danger', marker='x')
+                c='black', marker='s')
 
     plt.title(f'Time step {time_step}')
 
@@ -195,7 +195,7 @@ class Nematode:
 
     @property
     def collision(self):
-        return self.in_front in [nematode.position for nematode in simulation.nematode]
+        return self.in_front in [nematode.position for nematode in simulation.danger_positions]
 
     @property
     def nearby(self):
