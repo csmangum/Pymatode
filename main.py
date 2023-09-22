@@ -132,6 +132,20 @@ def visualize_state(grid: np.ndarray,
     plt.scatter([y for x, y in danger_positions], [x for x, y in danger_positions],
                 c='black', marker='s')
 
+    line_length = .5  # length of the line coming out from the triangle
+    if orientation == '^':  # Up
+        plt.plot([nematode_y, nematode_y], [
+                 nematode_x, nematode_x - line_length], c='blue')
+    elif orientation == 'v':  # Down
+        plt.plot([nematode_y, nematode_y], [
+                 nematode_x, nematode_x + line_length], c='blue')
+    elif orientation == '<':  # Left
+        plt.plot([nematode_y, nematode_y - line_length],
+                 [nematode_x, nematode_x], c='blue')
+    elif orientation == '>':  # Right
+        plt.plot([nematode_y, nematode_y + line_length],
+                 [nematode_x, nematode_x], c='blue')
+
     plt.title(f'Time step {time_step}')
 
     # Remove tick labels
@@ -192,6 +206,17 @@ class Nematode:
             return (self.x-1, self.y)
         elif self.orientation == 'right':
             return (self.x+1, self.y)
+
+    @property
+    def behind(self):
+        if self.orientation == 'up':
+            return (self.x, self.y+1)
+        elif self.orientation == 'down':
+            return (self.x, self.y-1)
+        elif self.orientation == 'left':
+            return (self.x+1, self.y)
+        elif self.orientation == 'right':
+            return (self.x-1, self.y)
 
     @property
     def collision(self):
